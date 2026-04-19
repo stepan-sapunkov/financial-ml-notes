@@ -5,5 +5,5 @@ The materials here are work-in-progress and may include experimental methods, pa
 
 ### Contents
 
-**[Latent space](./drafts/latent_space)**  
+**[Latent space](latent_space)**  
 Comparison of latent feature extraction methods (PCA, PLS, autoencoders) for forecasting copper returns using cross-asset signals.
