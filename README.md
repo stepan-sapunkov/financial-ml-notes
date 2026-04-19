@@ -7,6 +7,5 @@
 - [`drafts/`](./drafts)  
   Unfinished ideas, rough notes, early experiments, and temporary working files.
 
-- [`docs/`](./docs)  
 
 
