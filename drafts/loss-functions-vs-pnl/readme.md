@@ -51,7 +51,7 @@ Feature engineering is intentionally simple:
 No fundamental features or complex transformations are used.  
 The goal is to compare objectives, not to maximize raw predictive power through feature engineering.
 
-Feature generation details: `main.ipynb`
+Feature generation details: [main.ipynb](main.ipynb)
 
 ---
 
@@ -114,7 +114,7 @@ This keeps the focus on the loss function itself.
 
 Transaction cost is set to **2 bps per unit of turnover**.
 
-Backtest details: `forecasts_analys.ipynb`
+Backtest details: [forecasts_analys.ipynb](forecasts_analys.ipynb)
 
 ---
 
