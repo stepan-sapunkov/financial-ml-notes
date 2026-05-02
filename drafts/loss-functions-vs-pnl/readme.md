@@ -51,7 +51,7 @@ Feature engineering is intentionally simple:
 No fundamental features or complex transformations are used.  
 The goal is to compare objectives, not to maximize raw predictive power through feature engineering.
 
-Feature generation details: [main.ipynb](main.ipynb)
+Feature generation details: `main.ipynb`
 
 ---
 
@@ -94,27 +94,21 @@ Same data, same model class, different loss – different signal structure.
 
 A simple trading rule is used to convert forecasts into PnL.
 
-For each asset, horizon, and loss:
+Before positions are constructed, forecasts are normalized to make signals comparable across loss functions:
 
-1. The model predicts h-day future return.
-2. Forecasts are scaled by a recent historical threshold.
-3. The signal is clipped to the range [-1, 1].
-4. Positions are smoothed over the last h signals.
-5. Daily PnL is computed after transaction costs.
+<p align="center">
+  <code>y_norm_t = y_hat_t / EWMA(|y_hat_t|)</code>
+</p>
 
-The strategy is intentionally simple:
+This reduces the effect of scale differences between objectives.
 
-- no portfolio optimization
-- no volatility targeting
-- no leverage optimization
-- no risk parity
-- no signal blending
+For each asset, horizon, and loss, the model predicts h-day future returns, normalizes the forecast, maps it into a clipped signal in [-1, 1], smooths positions over the last h signals, and computes daily PnL after transaction costs.
 
-This keeps the focus on the loss function itself.
+The strategy is intentionally simple: no portfolio optimization, volatility targeting, leverage optimization, risk parity, or signal blending. This keeps the focus on the loss function itself.
 
 Transaction cost is set to **2 bps per unit of turnover**.
 
-Backtest details: [forecasts_analys.ipynb](forecasts_analys.ipynb)
+Backtest details: `forecasts_analys_v2.ipynb`
 
 ---
 
@@ -162,101 +156,141 @@ This example should not be interpreted as evidence that `quantile` is universall
 It shows that the objective can materially change the resulting trading signal and that forecast-quality metrics and trading metrics may rank models differently.
 
 ---
+### Statistical Significance Check
 
-## Key Findings
+To check whether the differences across losses are statistically meaningful, a block bootstrap was applied. A block bootstrap is used because daily PnL and trading signals are time-dependent, so the temporal structure should be partially preserved.
 
-Several patterns appear across assets and horizons.
+The check was done for both Sharpe ratios and cumulative PnL.
 
-**1. RMSE is not always aligned with trading performance**
+Sharpe ratio bootstrap density:
 
-The default `regression` objective is not consistently the best choice in terms of Sharpe or total return under this setup.  
-Minimizing squared forecast error is not the same as maximizing risk-adjusted PnL.
+![Sharpe density](SRDens.png)
 
-**2. Quantile loss is often competitive, but not universally optimal**
+Cumulative PnL bootstrap density:
 
-`quantile` frequently ranks among the better objectives across multiple assets and horizons, and in several cases delivers the highest Sharpe.
+![Cumulative PnL density](CumPnLDens.png)
 
-However, its performance is not stable across all settings:
+Visually, the bootstrap densities are close to each other. The tests also do not show statistically significant differences in Sharpe ratios across loss functions.
 
-- the best loss varies across assets
-- for the same asset, the preferred loss can change with the forecast horizon
-- part of the result may depend on how forecasts are scaled into positions
+One possible reason is that the experiment uses only price-based features from the same asset. In that setting, the model may have limited ability to forecast returns in the first place.
 
-This indicates that no single objective dominates in this experiment.  
-While modeling conditional asymmetry can be useful, the preferred loss remains context-dependent.
+Still, the losses do not produce identical signals or identical PnL paths. Even if the Sharpe differences are not statistically significant, the fact that the models behave differently may still be useful from a risk diversification perspective. This is discussed further below.
 
-**3. IC and PnL are different objects**
+---
+## Alpha Aggregation and Markowitz
 
-Higher IC does not always lead to higher Sharpe.  
-Trading performance also depends on forecast scale, position sizing, turnover, drawdowns, and tail behavior.
+Different objectives produce different signals and make different errors.  
+Aggregating them can improve stability and diversify model risk.
 
-**4. The best loss depends on asset and horizon**
+Example (signals and weights):
 
-There is no universally dominant objective.  
-For example, Gold behaves differently at h = 5, h = 10, and h = 20, while Copper and energy contracts show their own horizon-specific patterns.
+| Loss        | Signal | Weight |
+|------------|--------|--------|
+| quantile   | +1.0   | 0.5    |
+| fair       | 0.0    | 0.3    |
+| huber      | -1.0   | 0.2    |
 
-**5. Some objectives can produce inactive strategies**
+<p align="center">
+  <code>position = Σ w_i · s_i = 0.5·1.0 + 0.3·0.0 + 0.2·(-1.0) = 0.3</code>
+</p>
 
-For some assets and horizons, certain losses lead to zero or near-zero positions.  
-These cases are kept in the results because they are part of the experiment: the objective can affect whether the model produces a tradable signal at all.
+Before applying mean-variance optimization, the distribution of average returns is checked:
+
+![Mean PnL density](MeanPnLDens.png)
+
+The distribution empirically close to Gaussian, so the Markowitz framework is a reasonable approximation.
+
+Weights are obtained from a mean-variance setup targeting the tangency portfolio:
+
+![Efficient frontier](frontier.png)
+
+Since all alphas are derived from the same data and model class, they are highly correlated, which makes covariance estimation unstable.  
+A shrinkage estimator (Ledoit–Wolf) is used, followed by additional diagonal regularization:
+
+<p align="center">
+  <code>Sigma_reg = Sigma_LW + gamma · c · I</code>
+</p>
+
+where <code>c</code> is the average variance (mean of the diagonal of <code>Sigma_LW</code>).  
+The parameter <code>gamma</code> controls the strength of regularization and is selected on a validation window by maximizing Sharpe.
+
+The full evaluation is performed in a walk-forward manner.
+
+Even without statistically significant differences in Sharpe across individual losses, the signals are not identical.  
+Aggregation reduces model-specific noise and can improve the stability of the resulting strategy.
 
 ---
 
-## Current Limitations and Next Checks
+## Alpha Aggregation with a Meta Model
 
-This repository is currently a research draft.  
-Before making stronger conclusions, several checks are still needed:
+Another way to aggregate signals is to treat individual loss-based strategies as inputs to a meta model.
 
-1. **Signal normalization**
+The setup is close to the Markowitz approach: each loss produces its own alpha, and the final position is a weighted combination of these alphas. Since the alphas are highly correlated, regularization is required to obtain stable weights.
 
-   Different objectives produce forecasts with different distributions and scales.  
-   A useful robustness check is to map all forecasts into a common signal space, for example by using ranks, z-scores, or volatility-adjusted signals.
+Here a ridge-regularized allocation is used. The optimizer targets maximum Sharpe while penalizing large weights:
 
-2. **Forecast calibration**
+<p align="center">
+  <code>max Sharpe(w) - gamma · ||w||²</code>
+</p>
 
-   Since the objectives target different statistical quantities, their outputs are not identical types of forecasts.  
-   Additional calibration may be needed before comparing them as trading signals.
+with long-only constraints:
 
-3. **Statistical significance**
+<p align="center">
+  <code>w_i ≥ 0, &nbsp; Σ w_i = 1</code>
+</p>
 
-   Differences in Sharpe ratios and returns should be tested using methods such as block bootstrap, White’s Reality Check, or SPA-style tests.
+The ridge term reduces concentration and stabilizes the solution across windows.
 
-4. **Subperiod robustness**
+The regularization parameter <code>gamma</code> is selected on a validation window by maximizing Sharpe.  
+The full procedure is implemented in a walk-forward manner: weights are estimated on train, tuned on validation, refit on train+validation, and applied out-of-sample.
 
-   Results should be checked across different market regimes, for example pre-2010, 2010–2019, COVID period, and post-2020.
+The resulting portfolio PnL is:
 
-5. **Transaction cost sensitivity**
+<p align="center">
+  <code>portfolio_pnl_t = Σ w_i · pnl_{i,t}</code>
+</p>
 
-   The current backtest uses 2 bps per unit of turnover.  
-   Results should be tested under higher and lower cost assumptions.
-
-6. **Hyperparameter tuning policy**
-
-   The current setup tunes each model using the same objective as the training loss.  
-   A useful robustness check is to compare this against fixed hyperparameters or tuning based on a common validation metric.
-
-7. **Scaling rule sensitivity**
-
-   Since forecasts are converted into positions through a historical threshold, the trading results may depend on this mapping.  
-   Alternative position-sizing rules should be tested.
+This can be viewed as a simple meta-model over loss-specific alphas.  
+It allows the allocation to adapt over time while controlling overfitting through regularization.
 
 ---
 
-## Conclusion
+## Portfolio Results
 
-The main result is preliminary but clear within this setup: the loss function matters.
+As expected, aggregating alphas improves risk-adjusted performance.
 
-Even with fixed data, features, model class, validation scheme, and trading rule, changing only the objective leads to different:
+Cumulative PnL from the walk-forward procedure:
 
-- feature importances
-- forecast distributions
-- turnover profiles
-- drawdowns
-- Sharpe ratios
-- PnL paths
+![Portfolio PnL](PnLwithPortf.png)
 
-RMSE is convenient, but it is not necessarily aligned with financial performance.  
-In this experiment, robust and asymmetric objectives — especially `quantile` in several cases — often produce more attractive trading results than the standard squared-error objective.
+### Metrics
 
-However, these findings should be interpreted as evidence that loss functions can materially affect trading outcomes, not as proof that one objective is universally superior.  
-Further robustness checks are needed before drawing stronger conclusions.
+| Strategy           | Sharpe | Ann.Return | Ann.Vol | MaxDD   | Calmar |
+|--------------------|--------|------------|---------|---------|--------|
+| fair               | 0.4205 | 4.45%      | 10.59%  | -20.46% | 0.22   |
+| huber              | 0.3635 | 3.84%      | 10.58%  | -17.29% | 0.22   |
+| mape               | 0.4322 | 4.88%      | 11.28%  | -21.34% | 0.23   |
+| quantile           | 0.5231 | 6.32%      | 12.08%  | -25.46% | 0.25   |
+| regression         | 0.3762 | 3.96%      | 10.52%  | -16.75% | 0.24   |
+| regression_l1      | 0.4660 | 5.33%      | 11.43%  | -22.41% | 0.24   |
+| Shrinkage + L2     | 0.5496 | 6.39%      | 11.62%  | -15.58% | 0.41   |
+| Ridge              | 0.5599 | 6.49%      | 11.59%  | -15.67% | 0.41   |
+
+Both aggregation approaches outperform individual losses in Sharpe and drawdown-adjusted metrics.
+
+The improvement is moderate but consistent, suggesting that combining loss-specific signals helps reduce model-specific noise and stabilize returns.
+
+Implementation details: `portfolio_opt.ipynb`
+
+
+---
+
+## Conclusions
+
+The statistical power of the experiment is limited, likely due to the simplicity of the setup and the use of only price-based features. However, even in this setting, different loss functions produce different financial outcomes. This suggests that using RMSE (`regression`) by default is not necessarily optimal from a trading perspective.
+
+Different objectives generate non-identical signals, which makes them useful for diversification. Aggregating loss-specific alphas improves stability and leads to better risk-adjusted performance compared to individual models.
+
+IC and PnL capture different properties. Higher IC does not necessarily translate into higher Sharpe. Trading performance also depends on forecast scaling, position sizing, turnover, drawdowns, and tail behavior.
+
+Finally, the choice of loss function affects feature importance. Even with the same data and model class, different objectives lead to different representations of the signal, reinforcing that the loss function is not a neutral modeling choice.
