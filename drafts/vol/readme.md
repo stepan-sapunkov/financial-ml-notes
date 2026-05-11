@@ -24,7 +24,7 @@ Minute-frequency returns were used intentionally since realized variance converg
 
 The empirical analysis is conducted on Bitcoin data from 2020 to 2026. Bitcoin provides an especially interesting setting for volatility forecasting due to its 24/7 trading structure, pronounced regime shifts, strong volatility clustering, and persistent intraday seasonality.
 
-The study considers multiple forecasting horizons, including 1h, 6h, 24h, and 168h ahead realized volatility prediction. All models are evaluated on identical targets, feature sets, and rolling splits to ensure a fair comparison between econometric and ML/DL approaches. All horizons are modeled directly rather than recursively iterated from shorter-horizon forecasts.
+The study considers multiple forecasting horizons, including 1h, 6h, 24h, and 168h ahead realized volatility prediction. All models are evaluated on identical targets, feature sets, and rolling splits to ensure a fair comparison between econometric and ML approaches. All horizons are modeled directly rather than recursively iterated from shorter-horizon forecasts.
 
 To avoid look-ahead bias and leakage, all experiments are performed under a strict walk-forward framework. For models requiring hyperparameter tuning, each rolling iteration uses a two-year training window, a one-month validation window, and a one-month test window. For models without validation, the setup uses two years plus one month for training and one month for testing. All predictions are therefore fully out-of-sample and generated only from historically available information. Feature standardization, rolling statistics, normalization procedures, and all other feature transformations were computed sequentially within each walk-forward iteration using only historically available data.
 
@@ -56,7 +56,7 @@ For raw realized volatility (`RV`):
 - Skewness ≈ 39.60
 - Excess Kurtosis ≈ 2709.81
 
-This highlights the extreme heavy-tail behavior of raw RV and further justifies the logarithmic transformation for ML/DL modeling. 
+This highlights the extreme heavy-tail behavior of raw RV and further justifies the logarithmic transformation for ML modeling. 
 
 ![QQ-plot of log-RV](QQ_plot.png)
 
@@ -93,7 +93,7 @@ BTC volatility exhibits a clear deterministic seasonal structure rather than pur
 
 Weekly seasonality also indicates lower volatility during weekends, likely due to reduced participation from traditional financial institutions and lower overall market activity.
 
-These results suggest that volatility dynamics are closely tied to global market structure and trading activity. Consequently, ML/DL models should incorporate time-aware and regime-aware features such as:
+These results suggest that volatility dynamics are closely tied to global market structure and trading activity. Consequently, ML models should incorporate time-aware and regime-aware features such as:
 - hour-of-day,
 - day-of-week,
 - weekend indicators,
@@ -123,7 +123,7 @@ Hill estimator diagnostics indicate heavier-than-Gaussian tails even after log t
 In addition, GPH diagnostics suggest fractional integration and long-memory dynamics (`d ≈ 0.31`), motivating:
 - HAR-RV structures,
 - FIGARCH-style dynamics,
-- long-memory ML/DL architectures.
+- long-memory ML architectures.
 
 The estimated Hurst exponent appears unstable and inconsistent with the observed ACF persistence, likely due to structural breaks and intraday seasonality. Consequently, greater emphasis is placed on ACF/GPH diagnostics.
 
@@ -247,7 +247,7 @@ The resulting comparison for the 6h horizon is shown below:
 
 ![SPA-like test](spa_like_target_log_rv_6h.png)
 
-The results indicate that many ML/DL and extended HAR-type specifications consistently outperform the baseline HAR model across several horizons. This suggests that incorporating additional nonlinear, seasonal, liquidity, and regime-aware features materially improves realized volatility forecasts.
+The results indicate that many ML and extended HAR-type specifications consistently outperform the baseline HAR model across several horizons. This suggests that incorporating additional nonlinear, seasonal, liquidity, and regime-aware features materially improves realized volatility forecasts.
 
 From a practical perspective, better volatility forecasts may directly improve volatility targeting, leverage allocation, and position scaling procedures, potentially leading to more stable risk-adjusted strategy PnL.
 
