@@ -10,3 +10,10 @@ Comparison of latent feature extraction methods (PCA, PLS, autoencoders) for for
 
 **[loss-functions-vs-pnl](loss-functions-vs-pnl)**  
 How different loss functions affect forecast structure and trading performance in commodity futures.
+
+**[btc-volatility-forecasting](vol)**  
+Comparison of econometric and machine learning approaches for forecasting BTC realized volatility across multiple horizons under a strict walk-forward framework.
+
+**[vol-adjusted-thresholds](vol-adjusted-thresholds)**  
+Experiment on incorporating realized volatility forecasts into BTC trading thresholds and decomposing whether the resulting performance improvements come from predictive alpha or changed market exposure.
+
