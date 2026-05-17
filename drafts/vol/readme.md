@@ -282,3 +282,12 @@ From a practical perspective, better volatility forecasts may directly improve v
 │   ├── target_log_rv_6h_gw_heatmap.png
 │   └── spa_like_target_log_rv_6h.png
 ```
+
+## Future Work
+
+One natural extension of this research is forecast combination rather than strict model selection. The results already show strong horizon dependence and regime dependence, suggesting that no single model is uniformly optimal across all market conditions.
+
+A potentially more robust approach is to combine forecasts from multiple model classes, including HAR-type structures, boosting models, and regime-aware specifications. This is closely related to recent work on large-scale forecast combination and risk aggregation frameworks such as: https://arxiv.org/pdf/2508.16919
+
+Given the structural instability and changing volatility regimes observed in BTC, forecast combination may provide more stable OOS performance than relying on a single specification.
+
