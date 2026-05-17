@@ -268,15 +268,18 @@ This means that the difference between the volatility-adjusted strategy and the 
 
 To determine whether the volatility-adjusted strategy generates standalone alpha or simply increases market exposure, I regress the return difference between the two strategies on forward BTC returns:
 
-$$
-d_t = \alpha + \beta r_t^{mkt} + \varepsilon_t
-$$
+<p align="center">
+  <img src="https://latex.codecogs.com/svg.image?d_t&space;=&space;\alpha&space;+&space;\beta&space;r_t^{mkt}&space;+&space;\varepsilon_t" />
+</p>
 
 where:
 
-- $d_t$ is the return difference between the volatility-adjusted and baseline strategies,
-- $r_t^{mkt}$ is the forward BTC return,
-- $\varepsilon_t$ is the beta-neutral residual component.
+<p>
+<code>d_t</code> is the return difference between the volatility-adjusted and baseline strategies,<br>
+<code>r_t^mkt</code> is the forward BTC return,<br>
+<code>epsilon_t</code> is the beta-neutral residual component.
+</p>
+
 
 Newey-West HAC standard errors are used to account for serial correlation and heteroskedasticity.
 
