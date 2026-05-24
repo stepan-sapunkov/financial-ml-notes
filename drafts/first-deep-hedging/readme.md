@@ -2,7 +2,7 @@
 
 This project is less standard than my previous ones. In fact, it is mostly homework from the VEGA institute. Still, I found it interesting because before this project I had never really worked with reinforcement learning and this repository was my first serious attempt at applying RL methods to quantitative finance problems.
 
-The file `2201.09746.pdf` contains the main RL theory used in this project.
+The files `2201.09746.pdf`, `03_rl_intro.pdf`, `04_risk_averse_rl.pdf`, and `05_robustness.pdf` contain the main RL theory and lecture materials used in this project. The notebook `notebooka7f664d7f4.ipynb` contains the implementation and all experimental results.
 
 The main difference between reinforcement learning and supervised learning is that RL works through trial and error. An agent interacts with an environment and chooses actions in order to maximize some reward function. In finance this reward can naturally be related to PnL.
 
