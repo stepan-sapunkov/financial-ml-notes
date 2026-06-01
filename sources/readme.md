@@ -41,4 +41,13 @@ Datasets are not stored in the repository due to size and licensing constraints.
 | Institutional Data (Access Restricted) | S&P Capital IQ Pro | Company, market, and macro data  |
 | Institutional Data (Access Restricted) | EIU | Country, macroeconomic, and policy analysis |
 | Institutional Data (Access Restricted) | Statista | Aggregated economic and market statistics |
-
+| Research Papers | [arXiv](https://arxiv.org) | Preprints in ML, AI, statistics, quantitative finance, econometrics, mathematics, and computer science |
+| Quant Research | [AQR Research Insights](https://www.aqr.com/Insights/Research) | Factor investing, asset pricing, portfolio construction, macro, alternatives, market anomalies |
+| Quant Finance | [Hudson & Thames Research](https://hudsonthames.org) | Machine learning for finance, portfolio optimization, backtesting, market microstructure, quantitative strategies |
+| Trending Papers | [Hugging Face Papers (Trending)](https://huggingface.co/papers/trending) | Daily and weekly trending AI/ML research papers with community engagement signals |
+| Research Papers | [Hugging Face Papers](https://huggingface.co/papers) | Aggregated AI, LLM, multimodal, reinforcement learning, and systems research papers |
+| Peer Review Platform | [OpenReview](https://openreview.net) | Conference submissions, reviews, discussions, and accepted papers (NeurIPS, ICLR, ICML, etc.) |
+| Working Papers | [SSRN](https://www.ssrn.com) | Economics, finance, law, accounting, management, and social science working papers |
+| Quant Platform | [WorldQuant BRAIN](https://platform.worldquantbrain.com) | Quantitative alpha research platform, crowdsourced signal development, financial datasets |
+| Literature Discovery | [Connected Papers](https://www.connectedpapers.com) | Citation-network exploration and discovery of related academic papers |
+| Academic Search | [Semantic Scholar](https://www.semanticscholar.org) | Scholarly search engine with citation graphs, influence metrics, and paper recommendations |
