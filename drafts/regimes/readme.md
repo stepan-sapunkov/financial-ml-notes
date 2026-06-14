@@ -1,6 +1,6 @@
 ## Market Regimes for Bitcoin with GMM, HMM, and TCN-HMM
 
-In the previous backtesting discussion, I mentioned that using a single model, even with a walk-forward validation scheme, can still be a weak idea. The reason is simple: the relationship between features and the target may change over time.
+In the previous backtesting discussion, I mentioned that using a single model, even with a walk-forward validation scheme, can still be a weak idea. The relationship between features and the target may change over time.
 
 For example, after the transition to electric vehicles, car prices may start depending more on rare-earth metals than before. In financial markets, the same idea appears naturally: the market can move through different regimes, and each regime may require its own model.
 
