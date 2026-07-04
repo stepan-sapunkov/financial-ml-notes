@@ -1,4 +1,4 @@
-# EDA Toolkit for Financial and Crypto Time Series
+# EDA Toolkit for Time Series
 
 ## Short Overview
 
