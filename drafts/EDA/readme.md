@@ -64,11 +64,11 @@ If `ruptures` is not installed, `structural_breaks` returns an empty break table
 
 ## Import Examples
 
-If `eda.py` is inside `username/EDA/`, add that directory to `sys.path` from a notebook:
+If `eda.py` is inside `EDA/`, add that directory to `sys.path` from a notebook:
 
 ```python
 import sys
-sys.path.append("username/EDA")
+sys.path.append("EDA")
 
 from eda import EDA
 ```
@@ -163,8 +163,18 @@ target_result = eda.target_selection(
 
 diag_result = eda.data_diagnostics(
     cols=["close"],
+    plot=False,
+)
+
+acf_result = eda.acf_pacf(
+    "return",
+    lags=40,
+    step=1,
     plot=True,
 )
+
+rolling_mean = eda.rolling_mean("return", window=100)
+eda.plot(rolling_mean, ylabel="Rolling mean")
 
 dist_result = eda.distribution_report(
     col="return",
@@ -197,15 +207,40 @@ target_result.keys()
 target_result["summary"]
 ```
 
+`data_diagnostics` is intentionally lightweight by default. It only computes the summary section unless you explicitly request heavier sections:
+
+```python
+eda.data_diagnostics(cols=["return"], sections=("summary",), plot=False)
+eda.data_diagnostics(cols=["return"], sections=("acf_pacf",), step=5, plot=True)
+eda.data_diagnostics(cols=["return"], sections=("rolling",), rolling_windows=(100,), plot=True)
+eda.data_diagnostics(cols=["return"], sections="all", plot=False)
+```
+
+For large datasets, prefer the separate methods:
+
+```python
+eda.series_summary(["return"])
+eda.stationarity_tests("return", step=5)
+eda.acf_pacf("return", lags=40, step=5)
+eda.rolling_std("return", window=100)
+```
+
 ## Public API Overview
 
 ### Main Class Methods
 
 | Method | Purpose | Main Input | Main Output |
 |---|---|---|---|
+| `EDA.plot` | Plot a Series, DataFrame, or column with the module style | series, frame, or column name | `(fig, ax)` |
+| `EDA.missing_pct` | Missing and infinite value percentage | selected columns | `pd.Series` |
+| `EDA.series_summary` | Lightweight summary statistics | selected columns | `pd.DataFrame` |
+| `EDA.acf_pacf` | ACF/PACF for one column or series | column or series | `EDAResult` |
+| `EDA.stationarity_tests` | ADF, KPSS, and Zivot-Andrews for one column or series | column or series | `pd.DataFrame` |
+| `EDA.stationarity_summary` | Stationarity tests for selected columns | selected columns | `pd.DataFrame` |
+| `EDA.rolling_mean`, `EDA.rolling_std`, `EDA.rolling_median`, `EDA.rolling_mode`, `EDA.rolling_skewness`, `EDA.rolling_kurtosis` | One trailing rolling statistic at a time | column or series, window | `pd.Series` |
 | `EDA.forward_return` | Build aligned forward returns | price column, horizon | `pd.Series` |
 | `EDA.target_selection` | Compare target horizons | price column, horizons, cost | `EDAResult` |
-| `EDA.data_diagnostics` | Data quality, stationarity, ACF/PACF, rolling moments | selected columns | `EDAResult` |
+| `EDA.data_diagnostics` | Selected diagnostics; summary only by default | selected columns, sections | `EDAResult` |
 | `EDA.distribution_report` | Distribution, tails, normality, ARCH | one column | `EDAResult` |
 | `EDA.seasonality_report` | Seasonality, Hurst, CUSUM, breaks, STL | one column | `EDAResult` |
 | `EDA.feature_target_report` | Feature-target IC and nonlinear diagnostics | features, target or price | `EDAResult` |
@@ -218,12 +253,13 @@ target_result["summary"]
 | `forward_return` | Build aligned forward returns | `pd.Series` |
 | `target_selection` | Compare forward-return horizons | `EDAResult` |
 | `rolling_target_probability` | Rolling probability that target exceeds cost | `EDAResult` |
+| `plot` | Plot a Series or DataFrame with the module style | `(fig, ax)` |
 | `missing_pct` | Missing and infinite value percentage | `pd.Series` |
 | `series_summary` | Summary moments and quantiles | `pd.DataFrame` |
 | `rolling_mean`, `rolling_std`, `rolling_median`, `rolling_mode`, `rolling_skewness`, `rolling_kurtosis` | Trailing rolling statistics | `pd.Series` |
 | `adf_test`, `kpss_test`, `zivot_andrews_test`, `stationarity_tests`, `stationarity_summary` | Stationarity tests | `pd.DataFrame` |
 | `acf_pacf` | ACF/PACF table and plot | `EDAResult` |
-| `data_diagnostics` | Aggregate data diagnostics | `EDAResult` |
+| `data_diagnostics` | Selected data diagnostics; summary only by default | `EDAResult` |
 | `qq_plot`, `density_plot` | Distribution plots and tables | `EDAResult` |
 | `hill_estimator`, `evt_gpd_fit` | Tail index and GPD tail fit | `pd.DataFrame`, `EDAResult` |
 | `normality_tests`, `arch_lm_test`, `class_balance` | Distribution tests and class counts | `pd.DataFrame` |
@@ -272,6 +308,61 @@ Use `EDA` for notebook workflows. Use standalone functions when you want pure fu
 ```python
 eda = EDA(df, time_col="datetime", price_col="close")
 ```
+
+## `EDA.plot(data, cols=None, ax=None, figsize=(9, 4), xlabel="", ylabel=None, title=None, grid=False, legend=True, lw=1.5, alpha=1.0)`
+
+### Purpose
+
+Plot a column, `pd.Series`, or `pd.DataFrame` with the module's minimalist blue style.
+
+### Inputs
+
+- `data`: column name from `EDA.df`, external `pd.Series`, or external `pd.DataFrame`.
+- `cols`: optional selected DataFrame columns.
+- `ax`: optional matplotlib axis.
+- `figsize`: figure size if a new figure is created.
+- `xlabel`, `ylabel`, `title`: optional labels. The default x-label is blank.
+- `grid`, `legend`: plot style controls.
+- `lw`, `alpha`: line width and transparency.
+
+### Main Calculations
+
+No statistical calculation. The function only renders already computed data.
+
+### Returns
+
+Tuple `(fig, ax)`.
+
+### Notes
+
+Use this for rolling outputs and any aligned time series.
+
+### Example
+
+```python
+rm = eda.rolling_mean("return", window=100)
+eda.plot(rm, ylabel="Rolling mean")
+```
+
+## Lightweight `EDA` Methods
+
+The class exposes individual diagnostic methods so large datasets do not need to go through a heavy aggregate report.
+
+| Method | Purpose | Example |
+|---|---|---|
+| `EDA.missing_pct(cols=None)` | Missing and infinite value percentage | `eda.missing_pct(["close", "return"])` |
+| `EDA.series_summary(cols=None, quantiles=(...))` | Summary moments and quantiles | `eda.series_summary(["return"])` |
+| `EDA.acf_pacf(col, lags=40, alpha=0.05, step=1, plot=True)` | ACF/PACF for one series | `eda.acf_pacf("return", step=5)` |
+| `EDA.stationarity_tests(col, step=1, ...)` | ADF, KPSS, and Zivot-Andrews for one series | `eda.stationarity_tests("return", step=5)` |
+| `EDA.stationarity_summary(cols=None, **kwargs)` | Stationarity tests for selected columns | `eda.stationarity_summary(["return"], step=5)` |
+| `EDA.rolling_mean(col, window, min_periods=None)` | Trailing rolling mean | `eda.rolling_mean("return", 100)` |
+| `EDA.rolling_std(col, window, min_periods=None)` | Trailing rolling standard deviation | `eda.rolling_std("return", 100)` |
+| `EDA.rolling_median(col, window, min_periods=None)` | Trailing rolling median | `eda.rolling_median("return", 100)` |
+| `EDA.rolling_mode(col, window, min_periods=None)` | Trailing rolling mode | `eda.rolling_mode("signal", 100)` |
+| `EDA.rolling_skewness(col, window, min_periods=None)` | Trailing rolling skewness | `eda.rolling_skewness("return", 100)` |
+| `EDA.rolling_kurtosis(col, window, min_periods=None)` | Trailing rolling excess kurtosis | `eda.rolling_kurtosis("return", 100)` |
+
+These methods are thin wrappers around the standalone functions with the same names.
 
 ## `EDA.forward_return(horizon=1, price_col=None, log_return=True)`
 
@@ -356,25 +447,28 @@ res = eda.target_selection(horizons=[1, 5, 10], cost=0.0005, plot=False)
 res["summary"]
 ```
 
-## `EDA.data_diagnostics(cols=None, rolling_windows=(10080, 43200, 86400), quantiles=(...), lags=40, step=1, plot=True, verbose=False)`
+## `EDA.data_diagnostics(cols=None, sections=("summary",), rolling_windows=(10080, 43200, 86400), quantiles=(...), lags=40, step=1, plot=True, verbose=False)`
 
 ### Purpose
 
-Run first-pass data quality, rolling, autocorrelation, and stationarity diagnostics.
+Run selected first-pass diagnostics.
+
+The default is intentionally lightweight. It computes only the summary table. This avoids accidental heavy runs on large minute-level crypto datasets.
 
 ### Inputs
 
 - `cols`: selected columns. If `None`, all columns are considered.
-- `rolling_windows`: trailing window sizes.
+- `sections`: diagnostics to run. Allowed values are `"summary"`, `"stationarity"`, `"acf_pacf"`, `"rolling"`, or `"all"`.
+- `rolling_windows`: trailing window sizes, used only for the `"rolling"` section.
 - `quantiles`: quantiles for summary table.
-- `lags`: ACF/PACF lags.
+- `lags`: ACF/PACF lags, used only for the `"acf_pacf"` section.
 - `step`: subsampling step for stationarity and ACF/PACF.
 - `plot`: include figures.
 - `verbose`: warn when column diagnostics fail.
 
 ### Main Calculations
 
-Computes missingness, moments, quantiles, ADF/KPSS/Zivot-Andrews tests, ACF/PACF, and rolling moments.
+Depending on `sections`, computes summary statistics, ADF/KPSS/Zivot-Andrews tests, ACF/PACF, and/or rolling moments.
 
 ### Returns
 
@@ -385,17 +479,23 @@ Computes missingness, moments, quantiles, ADF/KPSS/Zivot-Andrews tests, ACF/PACF
 - `acf_pacf`;
 - `rolling`;
 - `figures`;
-- `warnings`.
+- `warnings`;
+- `sections`.
 
 ### Notes
 
-Use `step=h` for overlapping `h`-bar returns when non-overlapping test samples are desired.
+Use `step=h` for overlapping `h`-bar returns when non-overlapping test samples are desired. For large data, prefer individual methods such as `eda.rolling_std(...)`, `eda.acf_pacf(...)`, and `eda.stationarity_tests(...)`.
 
 ### Example
 
 ```python
-res = eda.data_diagnostics(cols=["return"], lags=24, step=5, plot=False)
-res["stationarity"]
+summary = eda.data_diagnostics(cols=["return"], plot=False)
+summary["summary"]
+
+acf = eda.data_diagnostics(cols=["return"], sections=("acf_pacf",), lags=24, step=5, plot=False)
+acf["acf_pacf"]
+
+full = eda.data_diagnostics(cols=["return"], sections="all", lags=24, step=5, plot=False)
 ```
 
 ## `EDA.distribution_report(col, q=0.95, tail="abs", arch_lags=10, step=1, plot=True)`
@@ -1147,32 +1247,41 @@ With `step=5`, lag 1 means 5 original bars. Use `step=h` for overlapping `h`-bar
 res = acf_pacf(df["fwd_return_5"], lags=30, step=5, plot=False)
 ```
 
-## `data_diagnostics(data, cols=None, rolling_windows=(10080, 43200, 86400), quantiles=(...), lags=40, step=1, plot=True, verbose=False)`
+## `data_diagnostics(data, cols=None, sections=("summary",), rolling_windows=(10080, 43200, 86400), quantiles=(...), lags=40, step=1, plot=True, verbose=False)`
 
 ### Purpose
 
-Standalone aggregate data diagnostics.
+Standalone selected data diagnostics.
 
 ### Inputs
 
-Same as `EDA.data_diagnostics`.
+- `data`: `pd.Series` or `pd.DataFrame`.
+- `cols`: optional selected columns.
+- `sections`: diagnostics to run. Use `"summary"`, `"stationarity"`, `"acf_pacf"`, `"rolling"`, or `"all"`.
+- `rolling_windows`: trailing windows used only for `"rolling"`.
+- `quantiles`: quantiles for summary.
+- `lags`: ACF/PACF lags used only for `"acf_pacf"`.
+- `step`: subsampling step for overlapping returns.
+- `plot`: include figures.
+- `verbose`: warn on diagnostic failures.
 
 ### Main Calculations
 
-Combines `series_summary`, `stationarity_summary`, `acf_pacf`, and rolling moments.
+Runs only the requested sections. By default, it computes only `series_summary`.
 
 ### Returns
 
-`EDAResult` with `summary`, `stationarity`, `acf_pacf`, `rolling`, `figures`, and `warnings`.
+`EDAResult` with `summary`, `stationarity`, `acf_pacf`, `rolling`, `figures`, `warnings`, and `sections`.
 
 ### Notes
 
-Rolling outputs preserve the original index.
+Rolling outputs preserve the original index. Use the individual functions directly when you only need one calculation.
 
 ### Example
 
 ```python
-res = data_diagnostics(df, cols=["return"], rolling_windows=[500], step=5, plot=False)
+summary = data_diagnostics(df, cols=["return"], plot=False)
+rolling = data_diagnostics(df, cols=["return"], sections=("rolling",), rolling_windows=[500], plot=False)
 ```
 
 ## `qq_plot(series, dist="both", max_points=50000, plot=True)`
@@ -2727,6 +2836,41 @@ Requires a `DatetimeIndex`.
 calendar_seasonality(df["return"], bucket="dayofweek")
 ```
 
+## `plot(data, cols=None, ax=None, figsize=(9, 4), xlabel="", ylabel=None, title=None, grid=False, legend=True, lw=1.5, alpha=1.0)`
+
+### Purpose
+
+Plot a `pd.Series` or `pd.DataFrame` with the module's minimalist cold-blue style.
+
+### Inputs
+
+- `data`: numeric `pd.Series` or `pd.DataFrame`.
+- `cols`: optional selected DataFrame columns.
+- `ax`: optional existing matplotlib axis.
+- `figsize`: figure size when a new figure is created.
+- `xlabel`, `ylabel`, `title`: optional labels.
+- `grid`, `legend`: style controls.
+- `lw`, `alpha`: line width and transparency.
+
+### Main Calculations
+
+No statistical calculation. It only renders already computed data.
+
+### Returns
+
+Tuple `(fig, ax)`.
+
+### Notes
+
+Use this for rolling outputs and simple time-series plots.
+
+### Example
+
+```python
+rm = rolling_mean(df["return"], window=100)
+plot(rm, ylabel="Rolling mean")
+```
+
 ## `set_plot_style()`
 
 ### Purpose
@@ -3030,6 +3174,7 @@ Palette:
 Shared helpers:
 
 ```python
+plot(series_or_frame)
 set_plot_style()
 style_axis(ax)
 ```
@@ -3052,7 +3197,7 @@ Main result keys:
 | Function / Method | Keys |
 |---|---|
 | `target_selection` | `summary`, `targets`, `rolling_probability`, `figure` |
-| `data_diagnostics` | `summary`, `stationarity`, `acf_pacf`, `rolling`, `figures`, `warnings` |
+| `data_diagnostics` | `summary`, `stationarity`, `acf_pacf`, `rolling`, `figures`, `warnings`, `sections` |
 | `distribution_report` | `summary`, `density`, `qq`, `hill`, `evt`, `normality`, `arch_lm`, `class_balance` |
 | `seasonality_report` | `periodogram`, `lomb_scargle`, `hurst_rs`, `cusum`, `structural_breaks`, `stl` |
 | `feature_target_report` | `ic`, `cumulative_ic`, `rolling_ic`, `rolling_ic_stats`, `quantiles`, `mutual_information`, `distance_correlation`, `granger`, `figures`, `warnings` |
@@ -3088,7 +3233,8 @@ dist["density"]["density"]
 1. Check data quality.
 
 ```python
-diag = eda.data_diagnostics(cols=["close", "return"], plot=False)
+summary = eda.data_diagnostics(cols=["close", "return"], plot=False)
+missing = eda.missing_pct(["close", "return"])
 ```
 
 2. Build and compare forward-return targets.
@@ -3103,13 +3249,22 @@ targets = eda.target_selection([1, 5, 10, 20], cost=0.0005, plot=False)
 dist = eda.distribution_report("return", q=0.99, plot=False)
 ```
 
-4. Check seasonality and structural breaks.
+4. Run heavier time-series diagnostics only when needed.
+
+```python
+acf = eda.acf_pacf("return", lags=40, step=1, plot=True)
+stationarity = eda.stationarity_tests("return", step=1)
+vol = eda.rolling_std("return", window=100)
+eda.plot(vol, ylabel="Rolling std")
+```
+
+5. Check seasonality and structural breaks.
 
 ```python
 season = eda.seasonality_report("return", period=1440, plot=False)
 ```
 
-5. Test feature-target links.
+6. Test feature-target links.
 
 ```python
 ft = eda.feature_target_report(
@@ -3120,7 +3275,7 @@ ft = eda.feature_target_report(
 )
 ```
 
-6. Check feature-feature redundancy.
+7. Check feature-feature redundancy.
 
 ```python
 fr = eda.feature_relation_report(
@@ -3129,6 +3284,4 @@ fr = eda.feature_relation_report(
 )
 ```
 
-7. Use the results to decide whether a hypothesis is worth modeling.
-
-
+8. Use the results to decide whether a hypothesis is worth modeling.
