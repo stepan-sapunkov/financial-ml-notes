@@ -2,7 +2,8 @@
 
 ## Short Overview
 
-`eda.py` is a notebook-friendly exploratory data analysis toolkit for financial and crypto time series.
+
+`eda.py` is a notebook-friendly exploratory data analysis toolkit for financial time series.
 
 It provides tools for:
 
