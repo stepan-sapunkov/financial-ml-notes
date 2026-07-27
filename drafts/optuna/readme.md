@@ -4,9 +4,9 @@
 
 I continue my series of experiments on factors that can affect model accuracy and stability.
 
-In a previous experiment, I studied the effect of different loss functions. This time, I focused on hyperparameter optimization.
+In a previous experiment, I studied the effect of different loss functions. This time, I focused on hyperparameter optimization and, in particular, on the effect of different Optuna samplers.
 
-For this experiment, I used `CatBoostRegressor` with basic features and no additional transformations. The complete implementation and experiment details are available in [`CTB_r.ipynb`](CTB_r.ipynb).
+For this experiment, I used `CatBoostRegressor` with basic features and no additional transformations. To reduce the risk of data snooping, each sampler was evaluated using multiple random seeds. The complete implementation and experiment details are available in [`CTB_r.ipynb`](CTB_r.ipynb) and the extended multi-seed experiments in [`CTB_r_v2.ipynb`](CTB_r_v2.ipynb).
 
 ## Optuna Samplers
 
@@ -71,20 +71,14 @@ The differences between the best validation MSE values are very small. The diffe
 
 For a more statistically rigorous comparison, I applied the Diebold–Mariano test to the forecast errors.
 
-| Model 1 | Model 2 | DM statistic | p-value |
-|---|---|---:|---:|
-| GPS | CMAES | `18.465589` | `0.000000e+00` |
-| GPS | TPE | `9.934415` | `0.000000e+00` |
-| GPS | QMC | `7.001669` | `2.529310e-12` |
-| CMAES | TPE | `-13.278605` | `0.000000e+00` |
-| CMAES | QMC | `-15.894836` | `0.000000e+00` |
-| TPE | QMC | `-1.550069` | `1.211249e-01` |
+Figure X presents the pairwise Diebold–Mariano test results for all model pairs. Blue cells indicate that the null hypothesis of equal predictive accuracy is rejected at the 5% significance level (`p ≤ 0.05`), whereas red cells indicate that it cannot be rejected (`p > 0.05`).
 
-At the 5% significance level, the null hypothesis of equal predictive accuracy is rejected for every pair except TPE and QMC.
+![Diebold–Mariano test results](DM.png)
 
-For this pair, the p-value is approximately `0.1211`, so there is not enough statistical evidence to conclude that their predictive accuracy is different.
+Most model pairs are statistically different in terms of predictive accuracy. Only a small number of comparisons remain insignificant, indicating that those pairs produce statistically indistinguishable forecasts.
 
 The sign of the DM statistic depends on the order of the models and on the definition of the loss differential. It should therefore be interpreted together with the exact implementation of the test.
+
 
 ## TPE Results
 
@@ -164,20 +158,28 @@ The same simple trading rule was used for every model. The entry and exit thresh
 
 | Model | Sharpe | Sortino | Max Drawdown |
 |---|---:|---:|---:|
-| GPS | `0.487` | `0.179` | `-0.189` |
-| CMAES | `0.840` | `0.296` | `-0.190` |
-| TPE | **`0.901`** | **`0.312`** | `-0.200` |
-| QMC | `0.336` | `0.127` | **`-0.187`** |
+| TPESampler_1 | `0.537` | `0.175` | `-0.149` |
+| TPESampler_2 | `0.102` | `0.032` | `-0.221` |
+| TPESampler_10 | `0.339` | `0.111` | `-0.243` |
+| GPSampler_1 | `0.587` | `0.175` | `-0.159` |
+| GPSampler_2 | `0.221` | `0.077` | `-0.162` |
+| GPSampler_10 | `-0.144` | `-0.048` | `-0.259` |
+| CmaEsSampler_1 | `1.149` | **`0.406`** | `-0.160` |
+| CmaEsSampler_2 | `0.713` | `0.240` | `-0.192` |
+| CmaEsSampler_10 | `0.554` | `0.181` | `-0.158` |
+| QMCSampler_1 | `0.503` | `0.157` | `-0.152` |
+| QMCSampler_2 | `0.651` | `0.212` | `-0.150` |
+| QMCSampler_10 | **`1.252`** | `0.395` | **`-0.128`** |
 
 The ranking based on financial metrics is different from the ranking based on MSE.
 
-GP produced the lowest mean test MSE, but it did not produce the highest Sharpe or Sortino ratio. TPE produced the strongest risk-adjusted returns, while CMA-ES showed results close to TPE with a slightly smaller drawdown. QMC had the smallest drawdown in absolute terms, but its Sharpe and Sortino ratios were the weakest.
+Considerable variability is observed even within the same sampler. The best Sharpe ratio (`1.252`) and the smallest maximum drawdown (`-0.128`) were achieved by `QMCSampler_10`, whereas the highest Sortino ratio (`0.406`) was obtained by `CmaEsSampler_1`. In contrast, `GPSampler_10` produced negative Sharpe and Sortino ratios, despite GP achieving the lowest average test MSE.
 
-This happens because a lower forecasting error does not automatically lead to a better trading strategy.
+This again shows that a lower forecasting error does not automatically lead to a better trading strategy.
 
-MSE measures the average squared prediction error. Financial results also depend on the sign and timing of predictions, their ranking, the distribution of errors, the selected thresholds, the number of trades, and downside risk.
+MSE measures the average squared prediction error. Financial performance also depends on the sign and timing of predictions, their ranking, the distribution of errors, the selected thresholds, the number of trades, and downside risk.
 
-The sampler affects the selected hyperparameters. The hyperparameters affect the model predictions. These changes affect the optimal entry and exit thresholds and can therefore change the final trading results.
+The sampler affects the selected hyperparameters. The hyperparameters affect the model predictions. These changes affect the optimal entry and exit thresholds and therefore the final trading performance.
 
 ## Conclusion
 
@@ -185,7 +187,7 @@ At first, the sampler may appear less important than a modelling decision such a
 
 With the same number of trials, different samplers produced different optimal CatBoost parameters, different out-of-sample errors, different convergence patterns, different hyperparameter-importance estimates, and different financial results.
 
-![Financial results across samplers](Ret.png)
+![Financial results across samplers](pnl.png)
 
 The sampler should therefore be treated as part of the modelling pipeline rather than only as a technical implementation detail.
 
