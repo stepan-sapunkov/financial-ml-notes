@@ -1,4 +1,4 @@
-# ML-Based Monetary Policy Decision Model
+# ML-Based Monetary Policy Scenario Analysis and Decision-Support Prototype
 
 ## Project goal
 
@@ -244,6 +244,21 @@ Another useful way to inspect the forecasts is the **hairy plot**. Each line rep
 
 This plot gives more information than a single final forecast line because it shows how the predicted path changed as new observations became available. It also makes forecast instability much easier to notice.
 
+## Comparison with simple benchmarks
+
+As a forecasting model, the proposed approach does not outperform simple time-series benchmarks. AR and ARIMA models achieve lower inflation forecast MSE on the test sample.
+
+| Method | MSE | Observations |
+| --- | ---: | ---: |
+| AR(4) | 0.000016 | 44 |
+| ARIMA(1,0,1) | 0.000016 | 44 |
+| Train mean | 0.000016 | 44 |
+| AR(1) | 0.000016 | 44 |
+| Naive | 0.000019 | 44 |
+| **Markowitz stacking** | **0.000031** | **44** |
+
+The proposed model is worse at forecasting inflation than simple benchmarks such as AR and ARIMA. However, these benchmarks only predict inflation and cannot be directly used to construct a **policy rule**. Our pipeline provides a conditional, model-implied inflation response to alternative rate inputs. This allows us to perform scenario analysis within the fitted model, but it does not identify the causal effect of monetary policy.
+
 ---
 
 ## Step 5. From forecasting to a monetary policy decision
@@ -262,27 +277,42 @@ Instead of asking only *what inflation will be*, the model therefore searches ov
 
 ### Oracle validation
 
-As an additional diagnostic, I also considered an oracle version of the problem. Here, realized future inflation is temporarily treated as known and the model searches for the rate that would have generated a forecast closest to that realization:
+As an additional diagnostic, I also considered an oracle version of the problem. Here, realized future inflation is temporarily treated as known, and the model searches over the available rate grid for the rate that gives the closest inflation forecast:
 
 <p align="center">
-  <img src="https://latex.codecogs.com/svg.image?i_t^{oracle}=\arg\min_i\left(\pi_{t%2Bh}^{realized}-\hat{f}_h(X_t,\hat{u}_t^{i}(i))\right)^2" />
+  <img src="https://latex.codecogs.com/svg.image?i_t%5E%7Boracle%7D%3D%5Carg%5Cmin_i%5Cleft(%5Cpi_%7Bt%2Bh%7D%5E%7Brealized%7D-%5Chat%7Bf%7D_h(X_t%2C%5Chat%7Bu%7D_t%5E%7Bi%7D(i))%5Cright)%5E2" />
 </p>
 
-The resulting oracle rate can then be compared with the observed Federal Funds Rate:
+The reported oracle MSE is the **inflation-forecast MSE after ex-post rate selection**:
 
 <p align="center">
-  <img src="https://latex.codecogs.com/svg.image?\mathrm{MSE}_{oracle}=\frac{1}{T}\sum_{t=1}^{T}\left(i_t^{oracle}-i_t^{actual}\right)^2" />
+  <img src="https://latex.codecogs.com/svg.image?%5Cmathrm%7BMSE%7D_%7Boracle%7D%5E%7B%5Cpi%7D%3D%5Cfrac%7B1%7D%7BN%7D%5Csum_%7Bt%2Ch%7D%5Cleft%5B%5Cpi_%7Bt%2Bh%7D%5E%7Brealized%7D-%5Chat%7B%5Cpi%7D_%7Bt%2Bh%7D(i_%7Bt%2Ch%7D%5E%7Boracle%7D)%5Cright%5D%5E2" />
 </p>
 
 The resulting value is
 
 <p align="center">
-  <img src="https://latex.codecogs.com/svg.image?%5Cmathrm%7BOverall%5C%20Oracle%5C%20MSE%7D%3D2.2816596457603746%5Ctimes10%5E%7B-5%7D" />
+  <img src="https://latex.codecogs.com/svg.image?%5Cmathrm%7BMSE%7D_%7Boracle%7D%5E%7B%5Cpi%7D%3D2.2816596457603746%5Ctimes10%5E%7B-5%7D" />
 </p>
 
-This is a numerically small and encouraging result.
+This value is measured in squared quarterly `Δlog(CPI)`, not in squared percentage points of the policy rate.
 
-At the same time, this experiment should be interpreted only as a **diagnostic test**. Realized future inflation is obviously unavailable when an actual monetary-policy decision is made. The oracle experiment therefore checks whether the learned response surface is consistent with the historical data, but it does not by itself prove causal identification or optimality of the resulting policy rule.
+The reported value is **not an MSE between the oracle and observed policy rates**. It is a model-implied lower bound obtained by selecting the best rate ex post over the restricted rate grid. Since future inflation is used to select the rate, it cannot be interpreted as real policy performance.
+
+### Policy-rule comparison
+
+The different rate scenarios can also be compared using their model-implied inflation MSE.
+
+| Policy | Model-implied inflation MSE | Observations |
+| --- | ---: | ---: |
+| **Ex-post oracle** | **0.000023** | 44 |
+| Hold previous-quarter rate | 0.000031 | 44 |
+| Observed current rate | 0.000031 | 44 |
+
+The **ex-post oracle** has the lowest error because it selects the rate after future inflation is already known. Therefore, its MSE should be treated as a model-implied lower bound rather than as evidence that the oracle policy could be implemented in practice.
+
+![Policy rule MSE comparison](https://raw.githubusercontent.com/stepan-sapunkov/financial-ml-notes/main/drafts/MP/policy_MSE.png)
+
 
 ---
 
@@ -370,3 +400,18 @@ The final decision layer searches over possible policy-rate values and chooses t
 The main idea is to treat monetary policy not as one isolated forecasting problem, but as a connected system. First, the model estimates the predictable part of the policy rate and extracts its unexpected component. This information is then used together with macroeconomic variables to model future inflation. Instead of relying on one estimator, many candidate specifications are combined using covariance-aware stacking. Finally, the resulting inflation model is used as a response surface over which the policy rate can be optimized.
 
 The approach is intentionally different from a structural macroeconomic model. It does not replace the identification assumptions of SVAR or DSGE models. Instead, the experiment studies how far a carefully designed and leakage-controlled ML pipeline can go in learning a useful monetary-policy decision rule from historical data.
+
+
+## Robustness and limitations
+
+The model is trained on **73 quarterly observations from 2006Q1 to 2024Q1**. The final holdout contains **9 quarters from 2024Q2 to 2026Q2**.
+
+Across all forecast horizons, the test produces **44 origin–horizon forecast pairs**. Their distribution is `h1 = 9`, `h2 = 8`, `h3 = 7`, `h4 = 6`, `h5 = 5`, `h6 = 4`, `h7 = 3`, and `h8 = 2`. These 44 forecast errors should not be treated as 44 independent observations because forecasts from different horizons overlap and share the same forecast origins. Given the small holdout sample, I therefore do not make claims about statistical significance.
+
+The stacking procedure also needs additional robustness checks. In particular, it is useful to compare the results across different values of the ridge parameter `lambda`, against simple equal-weight stacking, and after removing individual model families. This can show whether the final result depends strongly on a particular regularization choice or group of models.
+
+The dimensionality of the stacking problem is another limitation. For the inflation model there can be up to **484 candidate combinations**, while only around **51–65 training observations** are available depending on the horizon. Therefore, the stacking problem is strongly high-dimensional, with `M ≫ T`. Ledoit–Wolf shrinkage and ridge regularization make the optimization numerically more stable, but they do not remove the risk of overfitting.
+
+Another important limitation is the macroeconomic data itself. The current experiment uses **revised historical data**, rather than the information that was actually available to policymakers at each point in time. A realistic monetary-policy backtest would require real-time vintages, for example from **ALFRED**, and should account for publication delays and later revisions of variables such as GDP and CPI.
+
+Finally, the information set must be defined carefully. The current setup effectively assumes that the variables assigned to quarter `t` are available when the forecast is made. In a real-time experiment this assumption may be too strong, especially for GDP and other variables released with a delay. A stricter backtest should construct the feature set using only information that had actually been published at each forecast origin.
