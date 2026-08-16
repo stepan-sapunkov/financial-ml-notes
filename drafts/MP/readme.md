@@ -88,7 +88,7 @@ In simple terms, the first model estimates what policy rate would normally be ex
 
 This residual should not automatically be interpreted as a structurally identified monetary policy shock. It is better understood as an ML-based proxy for the unexpected part of the policy rate. A stronger causal interpretation would require additional economic identification assumptions.
 
-To avoid optimistic in-sample estimates, the rate trajectories used in the next stages are based on **out-of-fold (OOF) predictions**.
+To avoid optimistic in-sample estimates, the rate trajectories used in the next stages are based on **out-of-sample (OOS) predictions**.
 
 ![OOF policy-rate predictions](https://raw.githubusercontent.com/stepan-sapunkov/financial-ml-notes/main/drafts/MP/rate.png)
 
