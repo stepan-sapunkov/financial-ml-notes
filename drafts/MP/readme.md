@@ -108,7 +108,7 @@ The forecasting problem is solved **separately for each horizon**. This is impor
 
 PySR feature generation for the inflation models was again performed strictly on the training sample. No information from the final test observations was used to search for symbolic transformations.
 
-The resulting OOF inflation trajectories are shown below.
+The resulting OOS inflation trajectories are shown below.
 
 ![OOF inflation predictions](https://raw.githubusercontent.com/stepan-sapunkov/financial-ml-notes/main/drafts/MP/CPI.png)
 
